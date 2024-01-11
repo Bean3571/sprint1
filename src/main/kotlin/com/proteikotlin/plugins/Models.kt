@@ -103,9 +103,9 @@ class ChatService(private val database: Database) {
     suspend fun update(id: Int, chat: ExposedChat) {
         dbQuery {
             Chats.update({ Chats.id eq id }) {
-                it[Chats.name] = chat.name
-                it[Chats.usersNumber] = chat.usersNumber
-                it[Chats.usersList] = chat.usersList
+                it[name] = chat.name
+                it[usersNumber] = chat.usersNumber
+                it[usersList] = chat.usersList
             }
         }
     }
@@ -162,9 +162,9 @@ class MessageService(private val database: Database) {
     suspend fun update(id: Int, message: ExposedMessage) {
         dbQuery {
             Messages.update({ Messages.id eq id }) {
-                it[Messages.sender] = message.sender
-                it[Messages.chat] = message.chat
-                it[Messages.body] = message.body
+                it[sender] = message.sender
+                it[chat] = message.chat
+                it[body] = message.body
             }
         }
     }

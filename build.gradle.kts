@@ -27,6 +27,11 @@ repositories {
 }
 
 dependencies {
+    implementation("io.ktor:ktor-client-core:2.3.7")
+    implementation("io.ktor:ktor-client-apache:2.3.7")
+    implementation("io.ktor:ktor-client-json:2.3.7")
+    implementation("io.ktor:ktor-server-auth:2.3.7")
+
     implementation("io.ktor:ktor-server-core-jvm:2.3.7")
     implementation("io.ktor:ktor-server-content-negotiation-jvm:2.3.7")
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:2.3.7")
