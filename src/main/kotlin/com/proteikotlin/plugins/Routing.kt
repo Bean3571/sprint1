@@ -2,65 +2,67 @@ package com.proteikotlin.plugins
 
 import io.ktor.http.*
 import io.ktor.server.application.*
-import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.routing.get
-import org.jetbrains.exposed.sql.Database
 import java.util.*
 
 fun Application.configureRouting() {
-    val database = Database.connect(
-        url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
-        user = "root",
-        driver = "org.h2.Driver",
-        password = ""
-    )
-
-    val chatService = ChatService(database)
-    val userService = UserService(database)
-    val messageService = MessageService(database)
-
     routing {
-        authenticate("auth-basic") {
-            post("api/auth/login"){
-                val user = call.receive<ExposedUser>()
-                val login = user.login
-                val password = user.password
-                val credentials = "$login:$password"
-                val token: String = Base64.getEncoder().encodeToString(credentials.toByteArray())
-                call.respond(HttpStatusCode.OK, token)
+        // Create user
+        post("/api/reg") {
+            val user = call.receive<ExposedUser>()
+            if (userService.read(user.login) != null){
+                call.respond(HttpStatusCode.Found)
+            } else {
+                val id = userService.create(user)
+                call.respond(HttpStatusCode.Created, id)
             }
+        }
 
-            post("api/auth/logout"){
-                call.respond(HttpStatusCode.OK)
+        post("/api/auth/login"){
+            val credentials = call.receive<Credentials>()
+            val credLogin = credentials.login
+            val credPassword = credentials.password
+            val notEncodedToken = "$credLogin:$credPassword"
+            val token: String = Base64.getEncoder().encodeToString(notEncodedToken.toByteArray())
+            sessionService.create(token)
+            call.respond(HttpStatusCode.OK, token)
+        }
+
+        post("/api/auth/logout"){
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            sessionService.delete(token)
+            call.respond(HttpStatusCode.OK,"logged out successfully, Token deleted")
+        }
+
+        post("/api/auth/check-token"){
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized,"No active session with this token")
+            } else {
+                call.respond(HttpStatusCode.OK,"Token is valid")
             }
-
-            post("api/auth/check-token"){
-                val user = call.receive<ExposedUser>()
-                val receivedToken = call.request.authorization().toString()
-                val login = user.login
-                val password = user.password
-                val credentials = "$login:$password"
-                val token = "Basic " + Base64.getEncoder().encodeToString(credentials.toByteArray())
-                if (token == receivedToken){
-                    call.respond(HttpStatusCode.OK)
-                } else {
-                    call.respondText("Invalid Token")
-                }
-
-            }
-
-            // Chats
-            // Create chat
-            post("/chats") {
+        }
+        // Chats
+        // Create chat
+        post("/chats") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val chat = call.receive<ExposedChat>()
                 val id = chatService.create(chat)
                 call.respond(HttpStatusCode.Created, id)
             }
-            // Read chat
-            get("/chats/{id}") {
+        }
+        // Read chat
+        get("/chats/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 val chat = chatService.read(id)
                 if (chat != null) {
@@ -69,28 +71,37 @@ fun Application.configureRouting() {
                     call.respond(HttpStatusCode.NotFound)
                 }
             }
-            // Update chat
-            put("/chats/{id}") {
+        }
+        // Update chat
+        put("/chats/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 val chat = call.receive<ExposedChat>()
                 chatService.update(id, chat)
                 call.respond(HttpStatusCode.OK)
             }
-            // Delete chat
-            delete("/chats/{id}") {
+        }
+        // Delete chat
+        delete("/chats/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 chatService.delete(id)
                 call.respond(HttpStatusCode.OK)
             }
-            // Users
-            // Create user
-            post("/users") {
-                val user = call.receive<ExposedUser>()
-                val id = userService.create(user)
-                call.respond(HttpStatusCode.Created, id)
-            }
-            // Read user
-            get("/users/{id}") {
+        }
+        // Users
+        // Read user
+        get("/users/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 val user = userService.read(id)
                 if (user != null) {
@@ -99,28 +110,48 @@ fun Application.configureRouting() {
                     call.respond(HttpStatusCode.NotFound)
                 }
             }
-            // Update user
-            put("/users/{id}") {
+        }
+        // Update user
+        put("/users/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 val user = call.receive<ExposedUser>()
                 userService.update(id, user)
                 call.respond(HttpStatusCode.OK)
             }
-            // Delete user
-            delete("/users/{id}") {
+        }
+        // Delete user
+        delete("/users/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 userService.delete(id)
                 call.respond(HttpStatusCode.OK)
             }
-            // Messages
-            // Create message
-            post("/messages") {
+        }
+        // Messages
+        // Create message
+        post("/messages") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val message = call.receive<ExposedMessage>()
                 val id = messageService.create(message)
                 call.respond(HttpStatusCode.Created, id)
             }
-            // Read user
-            get("/messages/{id}") {
+        }
+        // Read message
+        get("/messages/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 val message = messageService.read(id)
                 if (message != null) {
@@ -129,15 +160,25 @@ fun Application.configureRouting() {
                     call.respond(HttpStatusCode.NotFound)
                 }
             }
-            // Update user
-            put("/messages/{id}") {
+        }
+        // Update user
+        put("/messages/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 val message = call.receive<ExposedMessage>()
                 messageService.update(id, message)
                 call.respond(HttpStatusCode.OK)
             }
-            // Delete user
-            delete("/messages/{id}") {
+        }
+        // Delete user
+        delete("/messages/{id}") {
+            val token: String = call.request.headers["X-Auth-Token"].toString()
+            if (sessionService.read(token) == null){
+                call.respond(HttpStatusCode.Unauthorized)
+            } else {
                 val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
                 messageService.delete(id)
                 call.respond(HttpStatusCode.OK)
