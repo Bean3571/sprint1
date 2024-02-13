@@ -11,6 +11,7 @@ object ActiveSessions : Table() {
 
     override val primaryKey = PrimaryKey(id)
 }
+
 object Users : Table() {
     val id = integer("id").autoIncrement()
     val name = varchar("name", 20)

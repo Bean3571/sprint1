@@ -34,7 +34,6 @@ fun Application.configureSockets() {
         webSocket("/chat") {
             val token: String = call.request.headers["X-Auth-Token"].toString()
             if (sessionService.read(token) != null){
-                println("Adding user!")
                 val thisConnection = Connection(this)
                 connections += thisConnection
                 try {

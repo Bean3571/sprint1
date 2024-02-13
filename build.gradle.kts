@@ -11,6 +11,8 @@ plugins {
     application
     id("io.ktor.plugin") version "2.3.8"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.21"
+
+    id("org.liquibase.gradle") version "2.2.1"
 }
 
 group = "com.proteikotlin"
@@ -28,6 +30,9 @@ repositories {
 }
 
 dependencies {
+    liquibaseRuntime("ch.qos.logback:logback-core:1.2.3")
+    liquibaseRuntime("ch.qos.logback:logback-classic:1.2.3")
+
     implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-websockets-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
