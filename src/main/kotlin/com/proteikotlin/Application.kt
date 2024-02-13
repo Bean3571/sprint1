@@ -1,6 +1,8 @@
 package com.proteikotlin
 
-import com.proteikotlin.plugins.*
+import com.proteikotlin.plugins.configureRouting
+import com.proteikotlin.plugins.configureSerialization
+import com.proteikotlin.plugins.createTables
 import configureSockets
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -13,6 +15,7 @@ fun main() {
 }
 
 fun Application.module() {
+
     configureSerialization()
     createTables()
     configureRouting()
