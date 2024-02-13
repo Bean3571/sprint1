@@ -17,4 +17,4 @@ data class ExposedChat(val name: String, val usersNumber: Int, val usersList: St
 
 // Модель сообщения
 @Serializable
-data class ExposedMessage(val sender: String, val chat: String, val body: String, val timestamp: String)
+data class ExposedMessage(val sender: String, val chatId: Int, val body: String, val timestamp: String)

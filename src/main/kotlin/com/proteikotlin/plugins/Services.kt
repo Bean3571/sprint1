@@ -4,9 +4,10 @@ import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
+
 suspend fun <T> dbQuery(block: suspend () -> T): T =
     newSuspendedTransaction(Dispatchers.IO) { block() }
+
 class SessionService(private val database: Database) {
     suspend fun create(newToken: String): Int = dbQuery {
         ActiveSessions.insert {
@@ -63,6 +64,17 @@ class UserService(private val database: Database) {
     suspend fun read(login: String): ExposedUser? {
         return dbQuery {
             Users.select { Users.login eq login }
+                .map { ExposedUser(
+                    it[Users.name],
+                    it[Users.login],
+                    it[Users.password]
+                ) }
+                .singleOrNull()
+        }
+    }
+    suspend fun read(login: String, password: String): ExposedUser? {
+        return dbQuery {
+            Users.select { Users.login eq login; Users.password eq password }
                 .map { ExposedUser(
                     it[Users.name],
                     it[Users.login],
@@ -133,7 +145,7 @@ class MessageService(private val database: Database) {
     suspend fun create(message: ExposedMessage): Int = dbQuery {
         Messages.insert {
             it[sender] = message.sender
-            it[chat] = message.chat
+            it[chatId] = message.chatId
             it[body] = message.body
             it[timestamp] = message.timestamp
         }[Messages.id]
@@ -144,7 +156,7 @@ class MessageService(private val database: Database) {
             Messages.select { Messages.id eq id }
                 .map {ExposedMessage(
                     it[Messages.sender],
-                    it[Messages.chat],
+                    it[Messages.chatId],
                     it[Messages.body],
                     it[Messages.timestamp]
                 )}
@@ -156,7 +168,7 @@ class MessageService(private val database: Database) {
         dbQuery {
             Messages.update({ Messages.id eq id }) {
                 it[sender] = message.sender
-                it[chat] = message.chat
+                it[chatId] = message.chatId
                 it[body] = message.body
                 it[timestamp] = message.timestamp
             }

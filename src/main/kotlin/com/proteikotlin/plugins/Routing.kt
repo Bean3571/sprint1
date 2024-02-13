@@ -5,7 +5,6 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.routing.get
 import java.util.*
 
 fun Application.configureRouting() {
@@ -23,12 +22,14 @@ fun Application.configureRouting() {
 
         post("/api/auth/login"){
             val credentials = call.receive<Credentials>()
-            val credLogin = credentials.login
-            val credPassword = credentials.password
-            val notEncodedToken = "$credLogin:$credPassword"
-            val token: String = Base64.getEncoder().encodeToString(notEncodedToken.toByteArray())
-            sessionService.create(token)
-            call.respond(HttpStatusCode.OK, token)
+            if (userService.read(credentials.login, credentials.password) == null) {
+                call.respond(HttpStatusCode.NotFound, "User not found")
+            } else {
+                val notEncodedToken = "${credentials.login}:${credentials.password}"
+                val token: String = Base64.getEncoder().encodeToString(notEncodedToken.toByteArray())
+                sessionService.create(token)
+                call.respond(HttpStatusCode.OK, token)
+            }
         }
 
         post("/api/auth/logout"){
@@ -161,7 +162,7 @@ fun Application.configureRouting() {
                 }
             }
         }
-        // Update user
+        // Update message
         put("/messages/{id}") {
             val token: String = call.request.headers["X-Auth-Token"].toString()
             if (sessionService.read(token) == null){
@@ -173,7 +174,7 @@ fun Application.configureRouting() {
                 call.respond(HttpStatusCode.OK)
             }
         }
-        // Delete user
+        // Delete message
         delete("/messages/{id}") {
             val token: String = call.request.headers["X-Auth-Token"].toString()
             if (sessionService.read(token) == null){
